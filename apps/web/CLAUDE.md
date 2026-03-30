@@ -155,4 +155,3 @@ NEXT_PUBLIC_LIVEKIT_URL=   # optional — LiveKit server URL for future guest vi
 ## Deployment
 
 - **Vercel** — zero-config, set env vars in project settings
-- **Tailscale** — self-host on the same Mac, access via tailnet or public Funnel URL

@@ -12,224 +12,150 @@
   <a href="https://simcast.dev"><img src="https://img.shields.io/badge/web-simcast.dev-7C3AED.svg" alt="simcast.dev"></a>
 </p>
 
-<p align="center">
-  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsimcast-dev%2Fsimcast&root-directory=apps%2Fweb&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY&envDescription=Supabase%20project%20credentials%20(Project%20Settings%20%E2%86%92%20API)&envLink=https%3A%2F%2Fsupabase.com%2Fdashboard&project-name=simcast&repository-name=simcast"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
-</p>
-
 <!-- <p align="center">
   <img src="docs/assets/demo.gif" alt="SimCast demo — macOS capturing a simulator, web dashboard viewing the stream and tapping remotely" width="800" />
 </p> -->
 
 ---
 
-SimCast captures individual iOS Simulator windows using ScreenCaptureKit, hardware-encodes to H.264 at 60 fps, and streams them to any browser via [LiveKit](https://livekit.io) (WebRTC). A web dashboard lets you start and stop streams, interact with the simulator remotely --- tap, scroll, type, press hardware buttons --- view real-time logs, and capture screenshots. No Xcode required on the viewer side.
+SimCast captures individual iOS Simulator windows using ScreenCaptureKit, hardware-encodes to H.264 at 60 fps, and streams them to any browser via [LiveKit](https://livekit.io) (WebRTC).
+
+A web dashboard lets you start and stop streams, interact with the simulator remotely - tap, scroll, type, press hardware buttons - view real-time logs, and capture screenshots and recordings.
+
+Stream commands and presence are coordinated in real time through [Supabase Realtime](https://supabase.com/realtime) (WebSockets), and screenshots and recordings are stored in [Supabase Storage](https://supabase.com/storage).
+
+No Xcode required on the viewer side.
 
 ## Features
 
-**Streaming**
-- **Window-level capture** --- targets individual Simulator windows, not the whole screen
-- **Hardware H.264** --- VideoToolbox encoding at 8 Mbps, 60 fps
-- **WebRTC delivery** --- sub-second latency via LiveKit; works behind NATs without port forwarding
-- **Multi-simulator** --- stream multiple simulators simultaneously, each in its own room
+**Stream any simulator, instantly**
+- Captures individual Simulator windows --- not the whole screen, just what matters
+- Hardware H.264 encoding via VideoToolbox at 8 Mbps, 60 fps
+- Sub-second latency over WebRTC. Works behind NATs, no port forwarding needed
+- Run multiple simulators at once --- each gets its own stream
 
-**Remote Interaction**
-- **Tap** --- by screen coordinates or accessibility label; long-press supported
-- **Scroll and gestures** --- directional scroll, edge swipes for navigation gestures
-- **Text input** --- type into any focused field on the simulator
-- **Hardware buttons** --- Home, Lock, Side Button, Siri, Apple Pay
-- **Screenshots** --- capture on demand, auto-download to browser
+**Touch it like it's real**
+- Tap anywhere on the stream --- coordinates map straight to the simulator
+- Tap by accessibility label --- type "Safari" and hit it without aiming
+- Long-press, scroll in any direction, swipe from edges for navigation gestures
+- Freeform swipe --- drag across the stream to draw custom gestures
+- Type text directly into whatever field has focus
+- Press Home, Lock, or Side Button from the control panel
+- Fire push notifications with custom title, body, badge, sound, and silent mode
+- Open deep links and custom URL schemes on the simulator
 
-**Dashboard**
-- **Live viewer** --- split-pane layout with a stream grid and full-size viewer
-- **Real-time logs** --- per-simulator log stream with category filters (stream, livekit, presence, command, error)
-- **Screenshot and recording gallery** --- browse, preview, and download past captures
-- **Stream stats** --- resolution, FPS, bitrate, packet loss, and jitter displayed in real time
+**Capture everything**
+- One-click screenshots - instantly available in the gallery
+- Start/stop video recordings with a live elapsed timer
+- Screenshot and recording gallery - browse, preview, download, bulk delete
+- Gallery updates in real time as new captures arrive
 
-**Built for Automation**
-- **Data channel API** --- send tap, gesture, text, and button commands over LiveKit's data channel
-- **AI agent ready** --- connect a LiveKit agent to observe the screen and inject actions programmatically
-
-## Architecture
-
-```mermaid
-graph LR
-    subgraph macOS["macOS App"]
-        A["ScreenCaptureKit"] --> B["H.264 Encoder"]
-        B --> C["LiveKit SDK"]
-    end
-
-    subgraph Cloud
-        D["LiveKit Cloud"]
-        E["Supabase"]
-    end
-
-    subgraph Browser["Web Dashboard"]
-        F["LiveKit Viewer"]
-        G["Stream Controls"]
-    end
-
-    C -- "WebRTC video" --> D
-    D -- "WebRTC video" --> F
-    F -. "data channel (tap, scroll, type)" .-> D
-    D -. "data channel" .-> C
-
-    G -- "stream commands" --> E
-    E -- "Realtime (presence + logs)" --> G
-    A <--> E
-```
-
-Three communication paths connect the system:
-
-1. **Media** (LiveKit / WebRTC) --- H.264 video flows from macOS to the browser. Input commands travel the reverse direction over LiveKit's data channel.
-2. **Signaling** (Supabase Realtime) --- Presence updates (which simulators are online and streaming), stream commands (start/stop), and per-simulator log broadcasts.
-3. **Storage** (Supabase Storage) --- Screenshots and recordings uploaded by the macOS app, browsable in the web gallery.
+**See what's happening**
+- Split-pane dashboard - simulator grid on the left, full-size viewer on the right
+- Live stream stats - resolution, FPS, bitrate, packet loss, jitter
+- Per-simulator log stream with category filters (stream, livekit, presence, command, error)
+- Resizable log drawer that stays out of your way until you need it
 
 ## Prerequisites
 
-You need a Mac to run the capture app. The web dashboard can run on the same machine or be deployed to a cloud host.
+You need a Mac to run the capture app. The web dashboard is deployed to Vercel.
 
 | Requirement | Install |
 |------------|---------|
-| macOS 15.6+ with Xcode 16+ | App Store or `xcode-select --install` |
+| macOS 15.6+ | --- |
 | At least one booted iOS Simulator | `open -a Simulator` |
-| Node.js 18+ | `brew install node` |
-| Supabase CLI | `brew install supabase/tap/supabase` |
 | [axe](https://github.com/cameroncooke/AXe) CLI (for interactive controls) | `brew install cameroncooke/tap/axe` |
-| [Supabase](https://supabase.com) project | Free tier works --- [create one](https://supabase.com/dashboard) |
+| [Supabase](https://supabase.com) account | Free tier works --- [create one](https://supabase.com/dashboard) |
 | [LiveKit Cloud](https://cloud.livekit.io) account | Free tier works --- [sign up](https://cloud.livekit.io) |
 
-## Quick Start (Automated)
+## Setup
 
-The setup script walks you through everything interactively:
-
-```bash
-git clone https://github.com/simcast-dev/simcast.git
-cd simcast
-./setup.sh
-```
-
-It will:
-1. Check that prerequisites are installed
-2. Log you into Supabase (opens browser if needed)
-3. Create a new Supabase project or connect to an existing one
-4. Auto-extract your project URL and API keys
-5. Ask for your LiveKit credentials
-6. Run database migrations (creates tables, RLS policies, storage buckets)
-7. Deploy the Supabase edge functions (LiveKit token issuers)
-8. Set LiveKit secrets on your Supabase project
-9. Generate config files for the macOS app and web dashboard
-10. Install web dependencies
-
-After setup, follow the printed instructions to boot a simulator, run the macOS app, and open the web dashboard.
-
-## Manual Setup
-
-If you prefer to set things up step by step:
-
-### 1. Clone
-
-```bash
-git clone https://github.com/simcast-dev/simcast.git
-cd simcast
-```
-
-### 2. Create a Supabase project
+### 1. Create a Supabase project
 
 Go to [supabase.com/dashboard](https://supabase.com/dashboard) and create a new project. Note down:
-- **Project Ref** --- the subdomain in your project URL (e.g. `abcdefghijkl`)
-- **Project URL** --- `https://<project-ref>.supabase.co`
+- **Project URL** --- `https://<project-ref>.supabase.co` (found in Project Settings → API)
 - **Anon Key** --- found in Project Settings → API
 
-### 3. Create a LiveKit Cloud project
+### 2. Create a LiveKit Cloud project
 
 Go to [cloud.livekit.io](https://cloud.livekit.io) and create a new project. Note down:
 - **LiveKit URL** --- `wss://your-app.livekit.cloud`
 - **API Key** and **API Secret** --- found in Project Settings → Keys
 
-### 4. Run database migrations
+### 3. Disable email confirmation
 
-```bash
-cd apps/supabase
-supabase link --project-ref <your-project-ref>
-supabase db push
-```
+By default, Supabase requires email verification on sign-up. Since SimCast doesn't need it:
 
-This creates:
-- `stream_commands` table (web → macOS signaling)
-- `screenshots` and `recordings` tables with row-level security
-- `screenshots` and `recordings` storage buckets with per-user RLS policies
-- Realtime publication for all tables
+1. Go to Supabase Dashboard → **Authentication** → **Providers** → **Email**
+2. Turn off **Confirm email**
+3. Click **Save**
+
+### 4. Set up the database
+
+Open your Supabase project dashboard and go to **SQL Editor**. Run the following two scripts in order:
+
+**Script 1** --- paste the contents of [`apps/supabase/migrations/20260322_create_screenshots_and_recordings.sql`](apps/supabase/migrations/20260322_create_screenshots_and_recordings.sql) and click **Run**.
+
+This creates the `screenshots` and `recordings` tables with row-level security policies and indexes.
+
+**Script 2** --- paste the contents of [`apps/supabase/migrations/20260325_create_stream_commands_and_storage.sql`](apps/supabase/migrations/20260325_create_stream_commands_and_storage.sql) and click **Run**.
+
+This creates the `stream_commands` and `streams` tables, `screenshots` and `recordings` storage buckets with per-user RLS policies, and enables Realtime for all tables.
+
+> Run these in order --- the second script builds on the first.
+
+After running both scripts, verify:
+- **Storage** → confirm `screenshots` and `recordings` buckets exist
+- **Database** → **Replication** → confirm `stream_commands`, `screenshots`, and `recordings` are listed under Realtime
 
 ### 5. Deploy edge functions
 
-```bash
-supabase functions deploy livekit-token
-supabase functions deploy livekit-guest-token
-```
+SimCast uses two Supabase Edge Functions to issue LiveKit tokens. Deploy them from the Supabase Dashboard:
 
-These issue LiveKit JWTs --- `livekit-token` for authenticated users, `livekit-guest-token` for guest share links.
+1. Go to **Edge Functions** in your project dashboard
+2. Click **Create a new function**
+3. Name it **`livekit-token`**
+4. Replace the default code with the contents of [`apps/supabase/functions/livekit-token/index.ts`](apps/supabase/functions/livekit-token/index.ts)
+5. Click **Deploy**
+> The function name must match exactly: `livekit-token`.
 
-### 6. Set LiveKit secrets
+### 6. Set edge function secrets
 
-```bash
-supabase secrets set \
-  LIVEKIT_URL=wss://your-app.livekit.cloud \
-  LIVEKIT_API_KEY=your-api-key \
-  LIVEKIT_API_SECRET=your-api-secret
-```
+Go to **Project Settings → Edge Functions** in the Supabase Dashboard and add these secrets:
 
-### 7. Configure the macOS app
+| Secret | Value |
+|--------|-------|
+| `LIVEKIT_URL` | `wss://your-app.livekit.cloud` |
+| `LIVEKIT_API_KEY` | Your LiveKit API key |
+| `LIVEKIT_API_SECRET` | Your LiveKit API secret |
 
-Copy the example config and fill in your Supabase credentials:
+> `SUPABASE_URL` and `SUPABASE_ANON_KEY` are automatically available to edge functions --- you don't need to add those.
 
-```bash
-cp apps/macos/simcast/Config/Debug.xcconfig.example \
-   apps/macos/simcast/Config/Debug.xcconfig
-```
+### 7. Deploy the web dashboard
 
-Edit `Debug.xcconfig`:
+**One-click deploy:**
 
-```
-SUPABASE_URL = https://<your-project-ref>.supabase.co
-SUPABASE_ANON_KEY = <your-anon-key>
-```
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsimcast-dev%2Fsimcast&root-directory=apps%2Fweb&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY&envDescription=Supabase%20project%20credentials%20(Project%20Settings%20%E2%86%92%20API)&envLink=https%3A%2F%2Fsupabase.com%2Fdashboard&project-name=simcast&repository-name=simcast)
 
-### 8. Build and run the macOS app
+Vercel will prompt for two environment variables:
+- `NEXT_PUBLIC_SUPABASE_URL` --- your project URL (e.g. `https://abcdefghijkl.supabase.co`)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` --- your anon key
 
-```bash
-open apps/macos/simcast.xcodeproj
-```
+**Manual Vercel setup:**
 
-Press **Cmd+R** to build and run. When prompted:
-- Grant **Screen Recording** permission (System Settings → Privacy & Security → Screen Recording)
-- Grant **Accessibility** permission (System Settings → Privacy & Security → Accessibility)
+1. Import your fork/repo at [vercel.com/new](https://vercel.com/new)
+2. Set **Root Directory** to `apps/web`
+3. Framework preset will auto-detect as **Next.js**
+4. Add the two environment variables above
+5. Click **Deploy**
 
-> After granting permissions, you may need to restart the app for them to take effect.
+**After deploying**, add your Vercel domain to Supabase's allowed redirect URLs:
+- Go to Supabase Dashboard → **Authentication** → **URL Configuration**
+- Add `https://your-app.vercel.app` to **Redirect URLs**
 
-### 9. Configure the web dashboard
+### 8. Verify everything works
 
-```bash
-cp apps/web/.env.local.example apps/web/.env.local
-```
-
-Edit `.env.local` with your Supabase credentials:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
-```
-
-### 10. Run the web dashboard
-
-```bash
-cd apps/web
-npm install
-npm run dev
-```
-
-### 11. Verify everything works
-
-1. Open [http://localhost:3000](http://localhost:3000)
+1. Open your Vercel deployment URL
 2. Create an account (email + password) --- this is shared between macOS and web
 3. Sign in on both the web dashboard and the macOS app with the same account
 4. Boot a simulator (`open -a Simulator`) --- it should appear in the dashboard's stream grid
@@ -237,86 +163,7 @@ npm run dev
 6. The live stream should appear in the viewer pane
 7. Try tapping on the stream, typing text, or pressing hardware buttons
 
-## Deployment
-
-The macOS capture app always runs locally --- it needs access to Xcode simulators. The web dashboard can be deployed anywhere.
-
-### Option A: Vercel (Cloud Hosting)
-
-The simplest way to host the web dashboard publicly.
-
-**One-click deploy:**
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsimcast-dev%2Fsimcast&root-directory=apps%2Fweb&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY&envDescription=Supabase%20project%20credentials%20(Project%20Settings%20%E2%86%92%20API)&envLink=https%3A%2F%2Fsupabase.com%2Fdashboard&project-name=simcast&repository-name=simcast)
-
-**Manual Vercel setup:**
-
-1. Import your fork/repo at [vercel.com/new](https://vercel.com/new)
-2. Set **Root Directory** to `apps/web`
-3. Framework preset will auto-detect as **Next.js**
-4. Add environment variables:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-5. Click **Deploy**
-
-After deploying, add your Vercel domain to Supabase's allowed redirect URLs:
-- Go to Supabase Dashboard → Authentication → URL Configuration
-- Add `https://your-app.vercel.app` to **Redirect URLs**
-
-> The macOS app still runs locally on your Mac. Vercel only hosts the web dashboard --- viewers can access it from anywhere, but streaming requires the macOS app to be running.
-
-### Option B: Self-Hosting with Tailscale
-
-Run the web dashboard on the same Mac as the capture app and access it from any device on your private Tailscale network.
-
-**Setup:**
-
-1. Install Tailscale:
-   ```bash
-   brew install tailscale
-   ```
-
-2. Sign in and connect to your tailnet:
-   ```bash
-   # Open Tailscale from the menu bar and sign in, or:
-   open -a Tailscale
-   ```
-
-3. Build and start the web dashboard in production mode:
-   ```bash
-   cd apps/web
-   npm run build
-   npm start
-   ```
-
-4. Access from any device on your tailnet:
-   ```
-   http://<your-mac-tailscale-ip>:3000
-   ```
-   Find your Tailscale IP in the Tailscale menu bar app, or run `tailscale ip -4`.
-
-**Benefits:** No cloud hosting, no public exposure, zero cost, works on your private network --- great for team development and internal testing.
-
-#### Tailscale Funnel (Public Access)
-
-[Tailscale Funnel](https://tailscale.com/kb/1223/funnel) exposes a local port to the public internet with automatic HTTPS --- no Vercel needed.
-
-1. Enable Funnel in your [Tailscale admin console](https://login.tailscale.com/admin/dns) (under DNS → Funnel)
-
-2. Serve the dashboard via Funnel:
-   ```bash
-   tailscale funnel 3000
-   ```
-
-3. You'll get a public URL like `https://your-mac.tail12345.ts.net/`
-
-4. Add this URL to Supabase's allowed redirect URLs:
-   - Supabase Dashboard → Authentication → URL Configuration
-   - Add `https://your-mac.tail12345.ts.net` to **Redirect URLs**
-
-**Benefits:** Public HTTPS URL without Vercel or any cloud provider. Ideal for sharing with stakeholders, QA, or demos. The URL is persistent as long as Funnel is running.
-
-> **Note:** The macOS capture app must be running on the same machine (or reachable on the tailnet) for streams to work.
+> The macOS app must be running for streams to work. Vercel only hosts the web dashboard --- viewers can access it from anywhere, but streaming requires the macOS app to be running on your Mac.
 
 ## Repository Structure
 
@@ -327,7 +174,6 @@ simcast/
 │   ├── web/                # Next.js 16 — dashboard, stream viewer, interactive controls
 │   └── supabase/           # Database migrations, edge functions, config
 ├── .github/workflows/      # CI/CD — notarized DMG release pipeline
-├── setup.sh                # Interactive setup script
 ├── CLAUDE.md               # AI assistant project context
 └── README.md
 ```
@@ -371,34 +217,25 @@ If empty, boot one: `open -a Simulator` or `xcrun simctl boot "iPhone 16"`.
 <details>
 <summary><b>Stream doesn't start</b></summary>
 
-1. Check that LiveKit secrets are set: `cd apps/supabase && supabase secrets list`
-2. Check edge function logs: `supabase functions logs livekit-token --scroll`
+1. Check that LiveKit secrets are set: Supabase Dashboard → Project Settings → Edge Functions → Secrets
+2. Check edge function logs: Supabase Dashboard → Edge Functions → livekit-token → Logs
 3. Verify both apps are signed in with the same account
 </details>
 
 <details>
 <summary><b>CSP or CORS errors in the browser console</b></summary>
 
-Ensure `NEXT_PUBLIC_SUPABASE_URL` in `.env.local` matches your Supabase project URL exactly. The CSP headers are derived from this environment variable.
+Ensure `NEXT_PUBLIC_SUPABASE_URL` in your Vercel environment variables matches your Supabase project URL exactly. The CSP headers are derived from this environment variable.
 </details>
 
 <details>
-<summary><b>Edge function deployment fails</b></summary>
+<summary><b>Edge function not working</b></summary>
 
-Make sure you're linked to the correct project:
-```bash
-cd apps/supabase
-supabase link --project-ref <your-project-ref>
-supabase functions deploy livekit-token
-```
-Check logs with: `supabase functions logs livekit-token --scroll`
+1. Verify the function name matches exactly: `livekit-token`
+2. Make sure the code was pasted completely (no truncation)
+3. Check the function's **Logs** tab in Supabase Dashboard → Edge Functions for errors
+4. Confirm all three LiveKit secrets are set (see step 6 in Setup)
 </details>
-
-## Contributing
-
-SimCast is in early active development. Issues, feature requests, and pull requests are welcome.
-
-If you find a bug or have an idea, [open an issue](https://github.com/simcast-dev/simcast/issues). For code contributions, fork the repo, create a branch, and submit a PR.
 
 ## License
 

@@ -12,7 +12,6 @@ Open-source platform that streams iOS Simulator windows over WebRTC. The macOS a
 simcast/
 ├── CLAUDE.md
 ├── README.md
-├── setup.sh                # Interactive setup script
 ├── apps/
 │   ├── macos/              # Swift/SwiftUI — captures Simulator, streams via LiveKit, syncs via Supabase Realtime
 │   │   └── CLAUDE.md
