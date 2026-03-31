@@ -26,7 +26,7 @@ Stream commands and presence are coordinated in real time through [Supabase Real
 
 No Xcode required on the viewer side.
 
-<h3 align="center"><a href="https://vimeo.com/1178984480">▶ Watch the demo video</a></h3>
+<h3 align="center"><a href="https://vimeo.com/1178984480">▶ Watch the demo video</a> · <a href="https://simcast.dev">🌐 simcast.dev</a></h3>
 
 ## Features
 
