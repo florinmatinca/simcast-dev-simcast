@@ -9,6 +9,11 @@ import SwiftUI
 import AppKit
 import Supabase
 
+private let mainWindowMinimumWidth: CGFloat = 540
+private let mainWindowMinimumHeight: CGFloat = 460
+private let mainWindowDefaultWidth: CGFloat = mainWindowMinimumWidth * 2
+private let mainWindowDefaultHeight: CGFloat = mainWindowMinimumHeight * 2
+
 @main
 struct SimcastApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -39,6 +44,14 @@ struct SimcastApp: App {
     var body: some Scene {
         WindowGroup("SimCast", id: AppLifecycleController.mainWindowID) {
             contentView
+                .frame(
+                    minWidth: mainWindowMinimumWidth,
+                    idealWidth: mainWindowDefaultWidth,
+                    maxWidth: .infinity,
+                    minHeight: mainWindowMinimumHeight,
+                    idealHeight: mainWindowDefaultHeight,
+                    maxHeight: .infinity
+                )
                 .environment(auth)
                 .environment(appearancePreferences)
                 .environment(appLifecycle)
@@ -95,6 +108,7 @@ struct SimcastApp: App {
                 }
         }
         .defaultLaunchBehavior(.presented)
+        .defaultSize(width: mainWindowDefaultWidth, height: mainWindowDefaultHeight)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Open SimCast") {
@@ -119,7 +133,7 @@ struct SimcastApp: App {
                 .disabled(auth.status == .unconfigured)
             }
         }
-        .windowResizability(.contentSize)
+        .windowResizability(.automatic)
 
         MenuBarExtra {
             MenuBarView(
@@ -151,30 +165,24 @@ struct SimcastApp: App {
                 title: "Opening SimCast",
                 message: auth.launchMessage
             )
-            .frame(width: 540, height: 460)
         case .unconfigured:
             if showWelcome {
                 WelcomeView(onContinue: { showWelcome = false })
-                    .frame(width: 540, height: 460)
             } else {
                 ConfigurationView(auth: auth, onBack: { showWelcome = true })
-                    .frame(width: 540, height: 460)
             }
         case .unauthenticated:
             LoginView(auth: auth)
-                .frame(width: 540, height: 460)
         case .authenticated:
             if let syncService, let sckManager {
                 ContentView()
                     .environment(syncService)
                     .environment(sckManager)
-                    .frame(width: 540, height: 460)
             } else {
                 AppLaunchView(
                     title: "Preparing Workspace",
                     message: "Connecting the realtime bridge and local simulator services."
                 )
-                .frame(width: 540, height: 460)
             }
         }
     }

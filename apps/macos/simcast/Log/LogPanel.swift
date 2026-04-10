@@ -168,6 +168,7 @@ struct LogPanel: View {
                 }
                 .padding(6)
             }
+            .textSelection(.enabled)
             .background(logBackground)
             .onChange(of: filteredEntries.count) { _, _ in
                 guard let last = filteredEntries.last else { return }
