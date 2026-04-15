@@ -17,8 +17,7 @@ enum SimulatorInputError: LocalizedError {
     }
 }
 
-@MainActor
-final class SimulatorInputService {
+actor SimulatorInputService {
     private let logger: AppLogger
 
     init(logger: AppLogger) {
@@ -33,7 +32,7 @@ final class SimulatorInputService {
         windowFrame: CGRect? = nil,
         deviceScreenSize: DeviceProfile.ScreenSize? = nil,
         udid: String
-    ) throws {
+    ) async throws {
         guard let size = resolveTargetSize(
             deviceScreenSize: deviceScreenSize,
             pid: pid,
@@ -54,7 +53,7 @@ final class SimulatorInputService {
             process.arguments = ["tap", "-x", "\(x)", "-y", "\(y)", "--udid", udid]
         }
 
-        try runProcess(process, failurePrefix: "Tap injection failed", udid: udid)
+        try await runProcess(process, failurePrefix: "Tap injection failed", udid: udid)
     }
 
     func injectSwipe(
@@ -66,7 +65,7 @@ final class SimulatorInputService {
         windowFrame: CGRect? = nil,
         deviceScreenSize: DeviceProfile.ScreenSize? = nil,
         udid: String
-    ) throws {
+    ) async throws {
         guard let size = resolveTargetSize(
             deviceScreenSize: deviceScreenSize,
             pid: pid,
@@ -88,7 +87,7 @@ final class SimulatorInputService {
             "--udid", udid
         ]
 
-        try runProcess(process, failurePrefix: "Swipe injection failed", udid: udid)
+        try await runProcess(process, failurePrefix: "Swipe injection failed", udid: udid)
     }
 
     func captureScreenshot(udid: String) async throws -> Data {
@@ -98,7 +97,7 @@ final class SimulatorInputService {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/axe")
         process.arguments = ["screenshot", "--udid", udid, "--output", path]
-        try runProcess(process, failurePrefix: "Screenshot capture failed", udid: udid)
+        try await runProcess(process, failurePrefix: "Screenshot capture failed", udid: udid)
 
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
             throw SimulatorInputError.processFailed(
@@ -109,18 +108,18 @@ final class SimulatorInputService {
         return data
     }
 
-    func injectLabelTap(label: String, udid: String) throws {
+    func injectLabelTap(label: String, udid: String) async throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/axe")
         process.arguments = ["tap", "--label", label, "--udid", udid]
-        try runProcess(process, failurePrefix: "Label tap injection failed", udid: udid)
+        try await runProcess(process, failurePrefix: "Label tap injection failed", udid: udid)
     }
 
-    func typeText(_ text: String, udid: String) throws {
+    func typeText(_ text: String, udid: String) async throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/axe")
         process.arguments = ["type", text, "--udid", udid]
-        try runProcess(process, failurePrefix: "Text injection failed", udid: udid)
+        try await runProcess(process, failurePrefix: "Text injection failed", udid: udid)
     }
 
     func performGesture(
@@ -129,7 +128,7 @@ final class SimulatorInputService {
         windowFrame: CGRect? = nil,
         deviceScreenSize: DeviceProfile.ScreenSize? = nil,
         udid: String
-    ) throws {
+    ) async throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/axe")
         var arguments = ["gesture", gesture]
@@ -143,10 +142,10 @@ final class SimulatorInputService {
         arguments += ["--udid", udid]
         process.arguments = arguments
 
-        try runProcess(process, failurePrefix: "Gesture injection failed", udid: udid)
+        try await runProcess(process, failurePrefix: "Gesture injection failed", udid: udid)
     }
 
-    func pressHardwareButton(_ button: String, udid: String) throws {
+    func pressHardwareButton(_ button: String, udid: String) async throws {
         let axeButton: String? = switch button {
         case "home": "home"
         case "lock": "lock"
@@ -163,14 +162,14 @@ final class SimulatorInputService {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/axe")
         process.arguments = ["button", axeButton, "--udid", udid]
-        try runProcess(process, failurePrefix: "Hardware button press failed", udid: udid)
+        try await runProcess(process, failurePrefix: "Hardware button press failed", udid: udid)
     }
 
-    func listApps(udid: String) throws -> [(bundleId: String, name: String)] {
+    func listApps(udid: String) async throws -> [(bundleId: String, name: String)] {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = ["simctl", "listapps", udid]
-        let output = try runProcess(
+        let output = try await runProcess(
             process,
             failurePrefix: "List apps failed",
             udid: udid,
@@ -201,11 +200,11 @@ final class SimulatorInputService {
         .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    func openURL(_ url: String, udid: String) throws {
+    func openURL(_ url: String, udid: String) async throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = ["simctl", "openurl", udid, url]
-        try runProcess(process, failurePrefix: "Open URL failed", udid: udid)
+        try await runProcess(process, failurePrefix: "Open URL failed", udid: udid)
     }
 
     func sendPushNotification(
@@ -218,7 +217,7 @@ final class SimulatorInputService {
         category: String?,
         silent: Bool,
         udid: String
-    ) throws {
+    ) async throws {
         var aps: [String: Any] = [:]
         if !silent, let body {
             var alert: [String: String] = ["body": body]
@@ -250,7 +249,7 @@ final class SimulatorInputService {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = ["simctl", "push", udid, bundleId, path]
-        try runProcess(process, failurePrefix: "Push notification send failed", udid: udid)
+        try await runProcess(process, failurePrefix: "Push notification send failed", udid: udid)
     }
 
     private func resolveTargetSize(
@@ -277,23 +276,33 @@ final class SimulatorInputService {
         failurePrefix: String,
         udid: String,
         captureStdout: Bool = false
-    ) throws -> Data? {
+    ) async throws -> Data? {
         let stdout = Pipe()
         let stderr = Pipe()
         process.standardOutput = stdout
         process.standardError = stderr
+        let executable = process.executableURL?.lastPathComponent ?? "process"
+        let arguments = process.arguments ?? []
+        let startedAt = Date()
+
+        await log(
+            .command,
+            "process start · \(executable) \(arguments.joined(separator: " "))",
+            udid: udid
+        )
 
         do {
             try process.run()
         } catch {
             let message = "\(failurePrefix): \(error.localizedDescription)"
-            logger.log(.error, message, udid: udid)
+            await log(.error, message, udid: udid)
             throw SimulatorInputError.processFailed(message)
         }
 
         process.waitUntilExit()
         let stdoutData = stdout.fileHandleForReading.readDataToEndOfFile()
         let stderrData = stderr.fileHandleForReading.readDataToEndOfFile()
+        let durationMs = Int(Date().timeIntervalSince(startedAt) * 1000)
 
         guard process.terminationStatus == 0 else {
             let stderrText = String(data: stderrData, encoding: .utf8)?
@@ -304,10 +313,26 @@ final class SimulatorInputService {
                 .compactMap { $0 }
                 .first(where: { !$0.isEmpty }) ?? "exit code \(process.terminationStatus)"
             let message = "\(failurePrefix): \(detail)"
-            logger.log(.error, message, udid: udid)
+            await log(
+                .error,
+                "\(message) · duration=\(durationMs)ms",
+                udid: udid
+            )
             throw SimulatorInputError.processFailed(message)
         }
 
+        await log(
+            .command,
+            "process done · \(executable) · duration=\(durationMs)ms",
+            udid: udid
+        )
+
         return captureStdout ? stdoutData : nil
+    }
+
+    private func log(_ category: LogCategory, _ message: String, udid: String) async {
+        await MainActor.run {
+            logger.log(category, message, udid: udid)
+        }
     }
 }

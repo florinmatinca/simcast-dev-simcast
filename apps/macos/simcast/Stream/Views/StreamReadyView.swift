@@ -62,7 +62,12 @@ struct StreamReadyView: View {
             }
 
             syncService.onCommand = { command in
-                Task { @MainActor in
+                logger.log(
+                    .command,
+                    "cmd scheduled off realtime listener · id=\(command.commandId) · kind=\(command.kind)",
+                    udid: command.udid
+                )
+                Task(priority: .userInitiated) {
                     await commandExecutor.handle(command)
                 }
             }

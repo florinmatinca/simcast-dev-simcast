@@ -16,14 +16,14 @@ final class WindowService {
         windows = try await fetchSimulatorWindows()
     }
   
-    static func findSimDisplayFrame(pid: pid_t) -> CGRect? {
+    nonisolated static func findSimDisplayFrame(pid: pid_t) -> CGRect? {
         findSimDisplayFrame(in: AXUIElementCreateApplication(pid))
     }
 
     /// Scoped variant: narrows the AX search to the window matching `windowFrame`
     /// so that the correct `iOSContentGroup` is returned when multiple simulators
     /// share the same Simulator process.
-    static func findSimDisplayFrame(pid: pid_t, windowFrame: CGRect) -> CGRect? {
+    nonisolated static func findSimDisplayFrame(pid: pid_t, windowFrame: CGRect) -> CGRect? {
         let app = AXUIElementCreateApplication(pid)
         if let axWindow = findAXWindow(in: app, matching: windowFrame),
            let frame = findSimDisplayFrame(in: axWindow) {
@@ -34,7 +34,7 @@ final class WindowService {
 
     // Recursively searches for "iOSContentGroup" subrole — this is the Simulator's
     // actual iOS display area, excluding window chrome, toolbar, and bezels.
-    static func findSimDisplayFrame(in element: AXUIElement) -> CGRect? {
+    nonisolated static func findSimDisplayFrame(in element: AXUIElement) -> CGRect? {
         var subroleRef: CFTypeRef?
         if AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subroleRef) == .success,
            let subrole = subroleRef as? String, subrole == "iOSContentGroup" {
@@ -59,7 +59,7 @@ final class WindowService {
 
     /// Finds the AX window whose frame matches `targetFrame` within a small tolerance.
     /// Both SCWindow.frame and AXPosition/AXSize use Quartz display coordinates (top-left origin).
-    private static func findAXWindow(in app: AXUIElement, matching targetFrame: CGRect) -> AXUIElement? {
+    nonisolated private static func findAXWindow(in app: AXUIElement, matching targetFrame: CGRect) -> AXUIElement? {
         var windowsRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windowsRef) == .success,
               let axWindows = windowsRef as? [AXUIElement] else { return nil }

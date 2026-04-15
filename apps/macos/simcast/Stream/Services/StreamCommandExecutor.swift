@@ -24,6 +24,13 @@ final class StreamCommandExecutor {
 
     func handle(_ command: RealtimeCommandEnvelope) async {
         guard let kind = command.parsedKind else { return }
+        let startedAt = Date()
+
+        logger.log(
+            .command,
+            "cmd execution started · id=\(command.commandId) · kind=\(command.kind)",
+            udid: command.udid
+        )
 
         switch kind {
         case .start:
@@ -56,6 +63,13 @@ final class StreamCommandExecutor {
         case .openURL:
             await openURL(command)
         }
+
+        let durationMs = Int(Date().timeIntervalSince(startedAt) * 1000)
+        logger.log(
+            .command,
+            "cmd execution finished · id=\(command.commandId) · kind=\(command.kind) · duration=\(durationMs)ms",
+            udid: command.udid
+        )
     }
 
     private func startStream(_ command: RealtimeCommandEnvelope) async {
@@ -114,7 +128,7 @@ final class StreamCommandExecutor {
         do {
             let payload = try command.decodePayload(as: TapCommandPayload.self)
             if let label = payload.label {
-                try inputService.injectLabelTap(label: label, udid: udid)
+                try await inputService.injectLabelTap(label: label, udid: udid)
                 await syncService.broadcastResult(for: command, status: "ok", payload: EmptyResultPayload())
                 return
             }
@@ -125,7 +139,7 @@ final class StreamCommandExecutor {
             }
 
             let holdDuration = payload.longPress == true ? payload.duration : nil
-            try inputService.injectTap(
+            try await inputService.injectTap(
                 normalizedX: x,
                 normalizedY: y,
                 holdDuration: holdDuration,
@@ -153,7 +167,7 @@ final class StreamCommandExecutor {
                 return
             }
 
-            try inputService.injectSwipe(
+            try await inputService.injectSwipe(
                 startNX: payload.startX / payload.vw,
                 startNY: payload.startY / payload.vh,
                 endNX: payload.endX / payload.vw,
@@ -177,7 +191,7 @@ final class StreamCommandExecutor {
 
         do {
             let payload = try command.decodePayload(as: ButtonCommandPayload.self)
-            try inputService.pressHardwareButton(payload.button, udid: udid)
+            try await inputService.pressHardwareButton(payload.button, udid: udid)
             await syncService.broadcastResult(for: command, status: "ok", payload: EmptyResultPayload())
         } catch {
             await syncService.broadcastFailure(for: command, reason: error.localizedDescription)
@@ -192,7 +206,7 @@ final class StreamCommandExecutor {
 
         do {
             let payload = try command.decodePayload(as: GestureCommandPayload.self)
-            try inputService.performGesture(
+            try await inputService.performGesture(
                 payload.gesture,
                 pid: pid(for: udid),
                 windowFrame: windowFrame(for: udid),
@@ -213,7 +227,7 @@ final class StreamCommandExecutor {
 
         do {
             let payload = try command.decodePayload(as: TextCommandPayload.self)
-            try inputService.typeText(payload.text, udid: udid)
+            try await inputService.typeText(payload.text, udid: udid)
             await syncService.broadcastResult(for: command, status: "ok", payload: EmptyResultPayload())
         } catch {
             await syncService.broadcastFailure(for: command, reason: error.localizedDescription)
@@ -228,7 +242,7 @@ final class StreamCommandExecutor {
 
         do {
             let payload = try command.decodePayload(as: PushCommandPayload.self)
-            try inputService.sendPushNotification(
+            try await inputService.sendPushNotification(
                 bundleId: payload.bundleId,
                 title: payload.title,
                 subtitle: payload.subtitle,
@@ -252,7 +266,7 @@ final class StreamCommandExecutor {
         }
 
         do {
-            let apps = try inputService.listApps(udid: udid).map {
+            let apps = try await inputService.listApps(udid: udid).map {
                 AppListItem(bundleId: $0.bundleId, name: $0.name)
             }
             await syncService.broadcastResult(
@@ -343,7 +357,7 @@ final class StreamCommandExecutor {
 
         do {
             let payload = try command.decodePayload(as: OpenURLCommandPayload.self)
-            try inputService.openURL(payload.url, udid: udid)
+            try await inputService.openURL(payload.url, udid: udid)
             await syncService.broadcastResult(for: command, status: "ok", payload: EmptyResultPayload())
         } catch {
             await syncService.broadcastFailure(for: command, reason: error.localizedDescription)

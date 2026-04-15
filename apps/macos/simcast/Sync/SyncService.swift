@@ -242,6 +242,12 @@ final class SyncService {
                     }
 
                     let command = try payload.decode(as: RealtimeCommandEnvelope.self)
+                    let transitMs = commandTransportLatencyMs(for: command)
+                    logger.log(
+                        .command,
+                        "cmd envelope received · id=\(command.commandId) · kind=\(command.kind) · transit=\(transitMs.map { "\($0)ms" } ?? "unknown")",
+                        udid: command.udid
+                    )
                     try await handleIncomingCommand(command)
                 } catch {
                     logger.log(.error, "command decode failed · \(error.localizedDescription)")
@@ -282,6 +288,11 @@ final class SyncService {
 
         await broadcastAck(for: command, status: "received", reason: nil)
         logger.log(.command, "cmd received · \(command.kind) · \(command.udid?.shortId() ?? "-")")
+        logger.log(
+            .command,
+            "cmd dispatched to executor · id=\(command.commandId) · kind=\(command.kind)",
+            udid: command.udid
+        )
         onCommand?(command)
     }
 
@@ -385,5 +396,10 @@ final class SyncService {
             await self.start(userId: userId, email: email)
             self.restartTask = nil
         }
+    }
+
+    private func commandTransportLatencyMs(for command: RealtimeCommandEnvelope) -> Int? {
+        guard let sentAt = ISO8601DateFormatter().date(from: command.sentAt) else { return nil }
+        return max(0, Int(Date().timeIntervalSince(sentAt) * 1000))
     }
 }

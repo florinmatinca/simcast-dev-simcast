@@ -42,7 +42,7 @@ struct SimcastApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("SimCast", id: AppLifecycleController.mainWindowID) {
+        Window("SimCast", id: AppLifecycleController.mainWindowID) {
             contentView
                 .frame(
                     minWidth: mainWindowMinimumWidth,
