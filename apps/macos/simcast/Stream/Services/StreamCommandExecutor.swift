@@ -251,6 +251,7 @@ final class StreamCommandExecutor {
                 sound: payload.sound,
                 category: payload.category,
                 silent: payload.contentAvailable == true,
+                customPayload: payload.customPayload,
                 udid: udid
             )
             await syncService.broadcastResult(for: command, status: "ok", payload: EmptyResultPayload())

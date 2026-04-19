@@ -416,7 +416,7 @@ export default function DashboardClient({ userEmail, userId }: { userEmail: stri
             letterSpacing: "var(--tracking-normal)",
           }}
         >
-          SimCast v1.0.3
+          SimCast v1.0.4
           {streamStats && (
             <>
               <span style={{ margin: "0 8px", opacity: 0.4 }}>|</span>

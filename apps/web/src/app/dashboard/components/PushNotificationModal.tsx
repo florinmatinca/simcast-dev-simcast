@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import type { JsonValue, PushPayload } from "@/lib/realtime-protocol";
 import AppDropdown from "./AppDropdown";
 
 const modalInputStyle: React.CSSProperties = {
@@ -16,6 +17,83 @@ const modalInputStyle: React.CSSProperties = {
   transition: "border-color 0.15s",
 };
 
+type ExtraPayloadEntry = {
+  id: string;
+  key: string;
+  value: string;
+};
+
+const RESERVED_CUSTOM_PAYLOAD_KEYS = new Set(["aps"]);
+
+function createExtraPayloadEntry(): ExtraPayloadEntry {
+  return {
+    id: `extra-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    key: "",
+    value: "",
+  };
+}
+
+function parseExtraPayloadValue(rawValue: string): JsonValue {
+  const value = rawValue.trim();
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (value === "null") return null;
+  if (/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
+
+  const looksLikeJson =
+    value.startsWith("{") ||
+    value.startsWith("[") ||
+    value.startsWith("\"");
+
+  if (looksLikeJson) {
+    return JSON.parse(value) as JsonValue;
+  }
+
+  return value;
+}
+
+function buildCustomPayload(
+  entries: ExtraPayloadEntry[],
+): { customPayload?: Record<string, JsonValue>; error?: string } {
+  const customPayload: Record<string, JsonValue> = {};
+  const seenKeys = new Set<string>();
+
+  for (const entry of entries) {
+    const key = entry.key.trim();
+    const rawValue = entry.value.trim();
+
+    if (!key && !rawValue) continue;
+
+    if (!key) {
+      return { error: "Each extra payload row needs a key." };
+    }
+
+    if (RESERVED_CUSTOM_PAYLOAD_KEYS.has(key)) {
+      return { error: `"${key}" is reserved and can't be added manually.` };
+    }
+
+    if (seenKeys.has(key)) {
+      return { error: `Duplicate extra payload key "${key}".` };
+    }
+
+    if (!rawValue) {
+      return { error: `Extra payload key "${key}" needs a value.` };
+    }
+
+    try {
+      customPayload[key] = parseExtraPayloadValue(rawValue);
+    } catch {
+      return {
+        error: `Value for "${key}" must be valid JSON when using quotes, objects, or arrays.`,
+      };
+    }
+
+    seenKeys.add(key);
+  }
+
+  return Object.keys(customPayload).length > 0 ? { customPayload } : {};
+}
+
 export default function PushNotificationModal({
   open,
   onClose,
@@ -27,7 +105,7 @@ export default function PushNotificationModal({
   open: boolean;
   onClose: () => void;
   udid: string | null;
-  onSend: (payload: Record<string, unknown>) => void;
+  onSend: (payload: PushPayload) => void;
   apps: Array<{ bundleId: string; name: string }>;
   appsLoading: boolean;
 }) {
@@ -40,6 +118,8 @@ export default function PushNotificationModal({
   const [category, setCategory] = useState("");
   const [silent, setSilent] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [extraPayloadEntries, setExtraPayloadEntries] = useState<ExtraPayloadEntry[]>([]);
+  const [extraPayloadError, setExtraPayloadError] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -47,7 +127,14 @@ export default function PushNotificationModal({
     const bid = bundleId.trim();
     const b = body.trim();
     if (!bid || (!silent && !b)) return;
-    const payload: Record<string, unknown> = { bundleId: bid };
+    const { customPayload, error } = buildCustomPayload(extraPayloadEntries);
+    if (error) {
+      setExtraPayloadError(error);
+      setShowAdvanced(true);
+      return;
+    }
+
+    const payload: PushPayload = { bundleId: bid };
     if (b) payload.body = b;
     const t = title.trim();
     if (t) payload.title = t;
@@ -61,6 +148,7 @@ export default function PushNotificationModal({
     if (cat) payload.category = cat;
     // Maps to APNs content-available: wakes the app without showing a user-visible notification
     if (silent) payload.contentAvailable = true;
+    if (customPayload) payload.customPayload = customPayload;
     onSend(payload);
     handleClose();
   }
@@ -75,7 +163,29 @@ export default function PushNotificationModal({
     setCategory("");
     setSilent(false);
     setShowAdvanced(false);
+    setExtraPayloadEntries([]);
+    setExtraPayloadError(null);
     onClose();
+  }
+
+  function updateExtraPayloadEntry(id: string, field: "key" | "value", nextValue: string) {
+    setExtraPayloadError(null);
+    setExtraPayloadEntries((current) =>
+      current.map((entry) =>
+        entry.id === id ? { ...entry, [field]: nextValue } : entry,
+      ),
+    );
+  }
+
+  function addExtraPayloadEntry() {
+    setExtraPayloadError(null);
+    setShowAdvanced(true);
+    setExtraPayloadEntries((current) => [...current, createExtraPayloadEntry()]);
+  }
+
+  function removeExtraPayloadEntry(id: string) {
+    setExtraPayloadError(null);
+    setExtraPayloadEntries((current) => current.filter((entry) => entry.id !== id));
   }
 
   return (
@@ -260,6 +370,86 @@ export default function PushNotificationModal({
                     onBlur={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "var(--input-border)"; }}
                   />
                 </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: "var(--font-size-xs)", fontWeight: "var(--font-weight-semibold)", color: "var(--muted-label)", letterSpacing: "var(--tracking-wide)", textTransform: "uppercase" }}>Extra payload</label>
+                    <span style={{ fontSize: "var(--font-size-xs)", color: "var(--muted-label-2)", lineHeight: 1.4 }}>
+                      Adds custom top-level keys next to <code style={{ fontFamily: "monospace" }}>aps</code>. Values accept plain text, numbers, booleans, <code style={{ fontFamily: "monospace" }}>null</code>, or JSON objects and arrays.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addExtraPayloadEntry}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--btn-secondary-bg)",
+                      border: "1px solid var(--btn-secondary-border)",
+                      color: "var(--btn-secondary-text)",
+                      fontSize: "var(--font-size-xs)",
+                      fontWeight: "var(--font-weight-semibold)",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Add field
+                  </button>
+                </div>
+
+                {extraPayloadEntries.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {extraPayloadEntries.map((entry) => (
+                      <div key={entry.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <input
+                          value={entry.key}
+                          onChange={(e) => updateExtraPayloadEntry(entry.id, "key", e.target.value)}
+                          placeholder="key"
+                          style={{ ...modalInputStyle, width: 140, flexShrink: 0, fontFamily: "monospace" }}
+                          onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "var(--input-border-focus)"; }}
+                          onBlur={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "var(--input-border)"; }}
+                        />
+                        <input
+                          value={entry.value}
+                          onChange={(e) => updateExtraPayloadEntry(entry.id, "value", e.target.value)}
+                          placeholder='value, e.g. user-123, true, 42, {"source":"dashboard"}'
+                          style={{ ...modalInputStyle, flex: 1, fontFamily: "monospace" }}
+                          onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "var(--input-border-focus)"; }}
+                          onBlur={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "var(--input-border)"; }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeExtraPayloadEntry(entry.id)}
+                          aria-label="Remove extra payload field"
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: "var(--radius-sm)",
+                            background: "var(--btn-secondary-bg)",
+                            border: "1px solid var(--btn-secondary-border)",
+                            color: "var(--muted-label-2)",
+                            cursor: "pointer",
+                            flexShrink: 0,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ padding: "12px 14px", borderRadius: "var(--radius-sm)", background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--muted-label-2)", fontSize: "var(--font-size-sm)" }}>
+                    No extra payload fields yet.
+                  </div>
+                )}
+
+                {extraPayloadError ? (
+                  <div style={{ padding: "10px 12px", borderRadius: "var(--radius-sm)", background: "var(--error-bg)", border: "1px solid var(--error-border)", color: "var(--error-text)", fontSize: "var(--font-size-sm)" }}>
+                    {extraPayloadError}
+                  </div>
+                ) : null}
               </div>
             </div>
           )}

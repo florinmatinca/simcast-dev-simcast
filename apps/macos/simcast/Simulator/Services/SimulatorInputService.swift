@@ -216,6 +216,7 @@ actor SimulatorInputService {
         sound: String?,
         category: String?,
         silent: Bool,
+        customPayload: [String: PushCustomPayloadValue]?,
         udid: String
     ) async throws {
         var aps: [String: Any] = [:]
@@ -230,7 +231,10 @@ actor SimulatorInputService {
         if let sound { aps["sound"] = sound }
         if let category { aps["category"] = category }
 
-        let payload: [String: Any] = ["aps": aps]
+        var payload = customPayload?.reduce(into: [String: Any]()) { partialResult, item in
+            partialResult[item.key] = item.value.foundationValue()
+        } ?? [:]
+        payload["aps"] = aps
         guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
             throw SimulatorInputError.processFailed(
                 "Push notification send failed: payload encoding failed."

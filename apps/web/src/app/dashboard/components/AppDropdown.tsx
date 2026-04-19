@@ -76,11 +76,14 @@ export default function AppDropdown({
             right: 0,
             maxHeight: 220,
             overflowY: "auto",
-            background: "var(--surface)",
-            border: "1px solid var(--input-border)",
+            background: "var(--card-bg)",
+            border: "1px solid var(--card-border)",
             borderRadius: "var(--radius-sm)",
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            overflowX: "hidden",
             zIndex: 10,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            boxShadow: "0 18px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
           }}
         >
           {loading ? (

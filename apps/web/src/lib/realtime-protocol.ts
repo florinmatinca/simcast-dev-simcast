@@ -72,6 +72,14 @@ export type ButtonPayload = { button: string };
 export type GesturePayload = { gesture: string };
 export type TextPayload = { text: string };
 export type OpenUrlPayload = { url: string };
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 export type PushPayload = {
   bundleId: string;
   title?: string;
@@ -81,6 +89,7 @@ export type PushPayload = {
   sound?: string;
   category?: string;
   contentAvailable?: boolean;
+  customPayload?: Record<string, JsonValue>;
 };
 
 export type CommandPayloadMap = {

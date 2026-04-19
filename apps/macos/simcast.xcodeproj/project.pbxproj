@@ -297,7 +297,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tidurdurti.simcast;
 				PRODUCT_NAME = SimCast;
 				REGISTER_APP_GROUPS = YES;
@@ -340,7 +340,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tidurdurti.simcast;
 				PRODUCT_NAME = SimCast;
 				REGISTER_APP_GROUPS = YES;
